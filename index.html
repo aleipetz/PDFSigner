@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PDF Signer</title>
+  <meta name="description" content="Assine e preencha data e local em PDFs direto no celular.">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PDF Signer">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="btn-back" class="icon-btn" hidden aria-label="Fechar documento">✕</button>
+    <h1 id="doc-title">PDF Signer</h1>
+    <button id="btn-settings" class="icon-btn" aria-label="Configurações">⚙︎</button>
+    <button id="btn-save" class="primary small" hidden>Salvar PDF</button>
+  </header>
+
+  <!-- Tela inicial -->
+  <main id="home" class="home">
+    <section class="card">
+      <h2>1. Sua assinatura</h2>
+      <p class="muted">Para ficar igual à sua assinatura manual, assine numa folha branca com caneta escura e tire uma foto. O app remove o fundo automaticamente. Se preferir, desenhe com o dedo.</p>
+      <div class="sig-slots">
+        <div class="sig-slot" data-slot="signature">
+          <div class="sig-thumb checker"><span class="muted">Nenhuma assinatura</span></div>
+          <button class="secondary" data-edit-slot="signature">Configurar assinatura</button>
+        </div>
+        <div class="sig-slot" data-slot="initials">
+          <div class="sig-thumb checker"><span class="muted">Nenhuma rubrica (opcional)</span></div>
+          <button class="secondary" data-edit-slot="initials">Configurar rubrica</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. Abra o documento</h2>
+      <label class="primary big file-btn">
+        Abrir PDF
+        <input id="pdf-input" type="file" accept="application/pdf,.pdf" hidden>
+      </label>
+      <p class="muted small-text">Tudo é processado no seu celular. O documento não é enviado para nenhum servidor.</p>
+    </section>
+  </main>
+
+  <!-- Editor -->
+  <main id="editor" class="editor" hidden>
+    <div id="hint" class="hint" hidden></div>
+    <div id="pages" class="pages"></div>
+  </main>
+
+  <nav id="item-bar" class="item-bar" hidden>
+    <button data-act="edit">Editar texto</button>
+    <button data-act="smaller" aria-label="Diminuir">A−</button>
+    <button data-act="bigger" aria-label="Aumentar">A+</button>
+    <button data-act="duplicate">Duplicar</button>
+    <button data-act="delete" class="danger">Excluir</button>
+  </nav>
+
+  <nav id="toolbar" class="toolbar" hidden>
+    <button data-tool="signature"><span class="ti">✍︎</span>Assinatura</button>
+    <button data-tool="initials"><span class="ti">✎</span>Rubrica</button>
+    <button data-tool="date"><span class="ti">📅</span>Data</button>
+    <button data-tool="place"><span class="ti">📍</span>Local</button>
+    <button data-tool="placedate"><span class="ti">📍📅</span>Local e data</button>
+    <button data-tool="text"><span class="ti">T</span>Texto</button>
+  </nav>
+
+  <!-- Diálogo de assinatura -->
+  <dialog id="sig-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2 id="sig-dialog-title">Assinatura</h2>
+      <button class="icon-btn" data-close aria-label="Fechar">✕</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="photo">📷 Foto do papel</button>
+      <button class="tab" data-tab="draw">✍︎ Desenhar</button>
+    </div>
+
+    <div class="tab-panel" data-panel="photo">
+      <ol class="muted small-text tips">
+        <li>Assine numa folha <b>branca</b>, sem pauta, com caneta escura.</li>
+        <li>Fotografe de perto, com boa luz e sem sombra.</li>
+      </ol>
+      <label class="secondary file-btn">
+        Tirar foto / escolher imagem
+        <input id="sig-photo-input" type="file" accept="image/*" hidden>
+      </label>
+      <div class="sig-preview checker"><canvas id="sig-photo-canvas"></canvas><span id="sig-photo-empty" class="muted">A prévia aparece aqui</span></div>
+      <div id="sig-photo-controls" class="controls" hidden>
+        <label>Sensibilidade <input id="sig-sensitivity" type="range" min="0" max="100" value="50"></label>
+        <div class="row">
+          <span>Cor:</span>
+          <label class="chip"><input type="radio" name="sig-color" value="original" checked> Original</label>
+          <label class="chip"><input type="radio" name="sig-color" value="blue"> Azul</label>
+          <label class="chip"><input type="radio" name="sig-color" value="black"> Preta</label>
+          <button id="sig-rotate" class="secondary small">↻ Girar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-panel="draw" hidden>
+      <p class="muted small-text">Dica: gire o celular na horizontal para ter mais espaço.</p>
+      <div class="draw-wrap"><canvas id="sig-draw-canvas"></canvas><div class="draw-line"></div></div>
+      <div class="row">
+        <span>Cor:</span>
+        <label class="chip"><input type="radio" name="draw-color" value="#14306e" checked> Azul</label>
+        <label class="chip"><input type="radio" name="draw-color" value="#111111"> Preta</label>
+        <button id="sig-draw-clear" class="secondary small">Limpar</button>
+      </div>
+    </div>
+
+    <div class="sheet-foot">
+      <button id="sig-delete" class="danger-outline">Remover</button>
+      <button id="sig-save" class="primary">Salvar</button>
+    </div>
+  </dialog>
+
+  <!-- Configurações -->
+  <dialog id="settings-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2>Configurações</h2>
+      <button class="icon-btn" data-close aria-label="Fechar">✕</button>
+    </div>
+    <div class="form">
+      <label>Local padrão (cidade/UF)
+        <input id="set-place" type="text" placeholder="Ex.: São Paulo/SP" autocomplete="address-level2">
+      </label>
+      <label>Formato da data
+        <select id="set-date-format">
+          <option value="short">11/10/2026</option>
+          <option value="long">11 de outubro de 2026</option>
+        </select>
+      </label>
+      <label>Cor do texto
+        <select id="set-text-color">
+          <option value="#111111">Preta</option>
+          <option value="#14306e">Azul</option>
+        </select>
+      </label>
+      <p class="muted small-text">Para trocar a assinatura ou a rubrica, feche o documento e use os botões da tela inicial.</p>
+    </div>
+    <div class="sheet-foot">
+      <button id="settings-save" class="primary">Salvar</button>
+    </div>
+  </dialog>
+
+  <!-- Resultado -->
+  <dialog id="result-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2>PDF pronto ✅</h2>
+      <button class="icon-btn" data-close aria-label="Fechar">✕</button>
+    </div>
+    <p id="result-name" class="muted"></p>
+    <div class="stack">
+      <button id="result-share" class="primary big" hidden>Compartilhar (WhatsApp, e-mail…)</button>
+      <a id="result-download" class="secondary big" download>Baixar PDF</a>
+      <a id="result-open" class="secondary big" target="_blank" rel="noopener">Abrir para conferir</a>
+    </div>
+  </dialog>
+
+  <div id="busy" class="busy" hidden><div class="spinner"></div><span id="busy-text">Processando…</span></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
